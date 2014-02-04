@@ -12,6 +12,7 @@ namespace Challenge.Mapping
         /* la X en el codigo es una instancia de la clase User*/
         public UserMap()
         {
+            Table("users");
             Id( x => x.id);
             Map( x => x.username);
             Map( x => x.email);

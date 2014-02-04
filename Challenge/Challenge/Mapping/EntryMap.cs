@@ -11,6 +11,7 @@ namespace Challenge.Mapping
     {
         public EntryMap()
         {
+            Table("entries");
             Id( x => x.id );
             Map( x => x.creationDate);
             Map( x => x.title);

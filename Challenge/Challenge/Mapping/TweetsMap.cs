@@ -11,6 +11,7 @@ namespace Challenge.Mapping
     {
         public TweetsMap()
         {
+            Table("hidden_tweets");
             Id( x => x.id);
             References( x => x.user); //"Many" Tweets to "One" User
             Map( x => x.hidden);
