@@ -7,15 +7,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Web.Http;
-using Challenge.HttpFetchers;
+using System.Collections;
 using Challenge.TypeMappers;
 
 namespace Challenge.Controllers
 {
-
     public class EntryController : ApiController
     {
-
         // GET api/<controller>
         public IEnumerable<Entry> Get()
         {
@@ -24,16 +22,19 @@ namespace Challenge.Controllers
                 using (var _session = sessionFactory.OpenSession())
                 {
                     var modelentries = _session.QueryOver<Entry>().List();
+
                     return modelentries;
                 }
             } 
         }
 
         // GET api/<controller> retorna las entradas de un usuario especifico
-        public IEnumerable<Entry> GetByUserId([FromUri] int user_id)
+        public IEnumerable<EntryDTO> GetByUserId([FromUri] int user_id)
         {
             Entry entry = null;
             User user   = null;
+            var _ListEntry = new List<EntryDTO>();
+
             using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
             {
                 using (var _session = sessionFactory.OpenSession())
@@ -42,7 +43,13 @@ namespace Challenge.Controllers
                         .JoinAlias(() => entry.user, () => user)
                         .Where(() => user.id == user_id).List<Entry>();
 
-                    return entries;
+                    foreach (var item in entries)
+                    {
+                        EntryDTO _entry = new EntryDTO();
+                        _ListEntry.Add(_entry.creatEntry(item));
+                    }
+
+                    return _ListEntry;
                 }
             }
         }

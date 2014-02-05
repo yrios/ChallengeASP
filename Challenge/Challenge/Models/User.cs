@@ -33,4 +33,12 @@ namespace Challenge.Models
         }
 
     }
+
+    public class UserProxy
+    {
+        public string username { get; set; }
+        public string email { get; set; }
+        public string password { get; set; } /*receive the password as string*/
+        public string twitterAccount { get; set; }
+    }
 }
