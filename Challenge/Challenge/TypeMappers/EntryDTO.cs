@@ -14,15 +14,16 @@ namespace Challenge.TypeMappers
         public  string content { get; set; }
         public  string user { get; set; }
 
-        public EntryDTO creatEntry(Entry item)
+        public static EntryDTO creatEntry(Entry item)
         {
-            this.id = item.id;
-            this.title = item.title;
-            this.content = item.content;
-            this.creationDate = item.creationDate;
-            this.user = item.user.username;
+            EntryDTO entry = new EntryDTO();
+            entry.id = item.id;
+            entry.title = item.title;
+            entry.content = item.content;
+            entry.creationDate = item.creationDate;
+            entry.user = item.user.username;
 
-            return this;
+            return entry;
         }
     }
 }

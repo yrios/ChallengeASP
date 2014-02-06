@@ -9,26 +9,35 @@ using System.Net.Http;
 using System.Web.Http;
 using System.Collections;
 using Challenge.TypeMappers;
+using NHibernate.Criterion;
+using Challenge.HttpResponses;
+using Newtonsoft.Json;
 
 namespace Challenge.Controllers
 {
     public class EntryController : ApiController
     {
         // GET api/<controller>
-        public IEnumerable<Entry> Get()
+        public IEnumerable<EntryDTO> Get()
         {
+            var _ListEntry = new List<EntryDTO>();
             using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
             {
                 using (var _session = sessionFactory.OpenSession())
                 {
-                    var modelentries = _session.QueryOver<Entry>().List();
+                    var entries = _session.QueryOver<Entry>().List();
 
-                    return modelentries;
+                    foreach (var item in entries)
+                    {
+                        //EntryDTO _entry = new EntryDTO();
+                        _ListEntry.Add(EntryDTO.creatEntry(item));
+                    }
+                    return _ListEntry;
                 }
             } 
         }
 
-        // GET api/<controller> retorna las entradas de un usuario especifico
+        // GET api/<controller>?user_id[id] retorna las entradas de un usuario especifico
         public IEnumerable<EntryDTO> GetByUserId([FromUri] int user_id)
         {
             Entry entry = null;
@@ -45,8 +54,7 @@ namespace Challenge.Controllers
 
                     foreach (var item in entries)
                     {
-                        EntryDTO _entry = new EntryDTO();
-                        _ListEntry.Add(_entry.creatEntry(item));
+                        _ListEntry.Add(EntryDTO.creatEntry(item));
                     }
 
                     return _ListEntry;
@@ -54,32 +62,90 @@ namespace Challenge.Controllers
             }
         }
 
-        // GET api/<controller>?entry_id=5 retorna un entrada con el id especificado
-        public Entry Get([FromUri] int entry_id)
+        // GET api/<controller>?entry_id=[id] retorna un entrada con el id especificado
+        public EntryDTO Get([FromUri] int entry_id)
         {
             using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
             {
                 using (var _session = sessionFactory.OpenSession())
                 {
-                    Entry entry = _session.Get<Entry>(entry_id);
+                    var entry = _session.Get<Entry>(entry_id);
                     if(entry == null)
                     {
-                        Entry blank_entry = new Entry();
-                        return blank_entry;
+                        return null;
                     }
-                    return entry;
+                    return EntryDTO.creatEntry(entry);
                 }
             } 
         }
 
-        // POST api/<controller>
-        public void Post([FromBody]string value)
+        // POST api/<controller> request payload {creationDate, tittle, content, user}
+        public HttpResponseMessage Post([FromBody]EntryDTO entryDto)
         {
+            using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
+            {
+                using (var _session = sessionFactory.OpenSession())
+                {
+                    using(ITransaction transaction = _session.BeginTransaction())
+                    {
+                        try
+                        {
+                            User author = _session.CreateCriteria<User>().Add(Restrictions.Eq("username", entryDto.user)).UniqueResult<User>();
+                            Entry entry = new Entry(
+                                entryDto.id,
+                                entryDto.creationDate,
+                                entryDto.title,
+                                entryDto.content,
+                                author);
+
+                            _session.Save(entry);
+                            transaction.Commit();
+
+                            var response = new Response((int)HttpStatusCode.OK,"success",entryDto);
+                            return Request.CreateResponse(HttpStatusCode.OK, response);
+                            
+                        }catch(Exception ex){
+                            transaction.Rollback();
+                            var response = new Response((int)HttpStatusCode.InternalServerError, "error", "internal server error");
+                            return Request.CreateResponse(HttpStatusCode.InternalServerError, response);
+                        }
+                    }
+                }
+            }
         }
 
         // PUT api/<controller>/5
-        public void Put(int id, [FromBody]string value)
+        public HttpResponseMessage Put([FromBody]EntryDTO entryDto)
         {
+            using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
+            {
+                using (var _session = sessionFactory.OpenSession())
+                {
+                    Entry oldEntry = _session.Get<Entry>(entryDto.id);
+
+                    if (oldEntry == null)
+                    {
+                        var response = new Response((int)HttpStatusCode.OK, "error", "entry not found");
+                        return Request.CreateResponse(HttpStatusCode.OK, response);
+                    }
+
+                    using (ITransaction transaction = _session.BeginTransaction())
+                    {
+                        Entry entry = new Entry(
+                                entryDto.id,
+                                entryDto.creationDate,
+                                entryDto.title,
+                                entryDto.content,
+                                oldEntry.user);
+
+                        _session.Merge(entry);
+                        transaction.Commit();
+
+                        var response = new Response((int)HttpStatusCode.OK, "success", EntryDTO.creatEntry(entry));
+                        return Request.CreateResponse(HttpStatusCode.OK, response);
+                    }
+                }
+            }
         }
 
         // DELETE api/<controller>/5
