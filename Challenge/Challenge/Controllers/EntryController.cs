@@ -63,7 +63,7 @@ namespace Challenge.Controllers
         }
 
         // GET api/<controller>?entry_id=[id] retorna un entrada con el id especificado
-        public EntryDTO Get([FromUri] int entry_id)
+        public IEnumerable<EntryDTO> Get([FromUri] int entry_id)
         {
             using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
             {
@@ -74,7 +74,9 @@ namespace Challenge.Controllers
                     {
                         return null;
                     }
-                    return EntryDTO.creatEntry(entry);
+                    var entryResult = new List<EntryDTO>();
+                    entryResult.Add(EntryDTO.creatEntry(entry));
+                    return entryResult;
                 }
             } 
         }
@@ -149,8 +151,30 @@ namespace Challenge.Controllers
         }
 
         // DELETE api/<controller>/5
-        public void Delete(int id)
+        public HttpResponseMessage Delete([FromUri] int id)
         {
+            using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
+            {
+                using (var _session = sessionFactory.OpenSession())
+                {
+                    Entry entry = _session.Get<Entry>(id);
+
+                    if (entry == null)
+                    {
+                        var response = new Response((int)HttpStatusCode.OK, "error", "entry not found");
+                        return Request.CreateResponse(HttpStatusCode.OK, response);
+                    }
+
+                    using (ITransaction transaction = _session.BeginTransaction())
+                    {
+                        _session.Delete(entry);
+                        transaction.Commit();
+
+                        var response = new Response((int)HttpStatusCode.OK, "success", "entry removed");
+                        return Request.CreateResponse(HttpStatusCode.OK, response);
+                    }
+                }
+            }
         }
     }
 }

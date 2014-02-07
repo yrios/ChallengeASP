@@ -173,6 +173,7 @@
     <Compile Include="Models\Tweets.cs" />
     <Compile Include="Models\User.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Security\ChallengeCustomMembership.cs" />
     <Compile Include="TypeMappers\EntryDTO.cs" />
     <Compile Include="TypeMappers\TweetDTO.cs" />
     <Compile Include="TypeMappers\UserDTO.cs" />
