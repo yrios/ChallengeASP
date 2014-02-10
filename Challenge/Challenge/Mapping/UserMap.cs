@@ -20,7 +20,7 @@ namespace Challenge.Mapping
             Map( x => x.salt);
             Map( x => x.twitterAccount);
             HasMany( x => x.entries);// esto indica una relacion User tiene muchas entries (one-to-many)
-
+            HasOne( x => x.userMembership);
         }
     }
 }

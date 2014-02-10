@@ -14,6 +14,7 @@ namespace Challenge.Models
         public virtual string salt { get; set; }
         public virtual string twitterAccount { get; set; }
         public virtual IList<Entry> entries { get; set; }
+        public virtual UserMembership userMembership { get; set; }
 
         public User()
         {
