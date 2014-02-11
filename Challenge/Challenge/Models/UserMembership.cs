@@ -39,7 +39,6 @@ namespace Challenge.Models
         public virtual DateTime FailedPasswordAttemptWindowStart { get; set; }
         public virtual DateTime FailedPasswordAnswerAttemptWindowStart { get; set; }
         public virtual IList<RoleMembership> Roles { get; set; }
-        public virtual User user { get; set; }
 
 
 
