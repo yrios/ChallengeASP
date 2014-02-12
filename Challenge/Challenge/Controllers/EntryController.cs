@@ -106,7 +106,7 @@ namespace Challenge.Controllers
                             var response = new Response((int)HttpStatusCode.OK,"success",entryDto);
                             return Request.CreateResponse(HttpStatusCode.OK, response);
                             
-                        }catch(Exception ex){
+                        }catch(Exception){
                             transaction.Rollback();
                             var response = new Response((int)HttpStatusCode.InternalServerError, "error", "internal server error");
                             return Request.CreateResponse(HttpStatusCode.InternalServerError, response);

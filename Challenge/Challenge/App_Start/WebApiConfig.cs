@@ -23,6 +23,8 @@ namespace Challenge
             //Respuesta por defecto en JSON, si se espcifica lo contrario la respuesta viene en XML
             var appXmlType = config.Formatters.XmlFormatter.SupportedMediaTypes.FirstOrDefault(t => t.MediaType == "application/xml");
             config.Formatters.XmlFormatter.SupportedMediaTypes.Remove(appXmlType);
+
+            config.MessageHandlers.Add(new BasicAuthenticationHandler());
         }
     }
 }

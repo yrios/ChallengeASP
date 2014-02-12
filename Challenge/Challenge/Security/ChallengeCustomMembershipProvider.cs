@@ -12,7 +12,7 @@ using System.Web;
 using System.Web.Configuration;
 using System.Web.Security;
 
-namespace Challenge.Membership
+namespace Challenge.Security
 {
     public class ChallengeCustomMembershipProvider : MembershipProvider
     {
@@ -45,46 +45,6 @@ namespace Challenge.Membership
         {
             get { return _applicationName;}
             set { _applicationName = value;}
-        }
-        public override bool EnablePasswordReset
-        {
-            get { return _enablePasswordReset; }
-        }
-        public override bool EnablePasswordRetrieval
-        {
-            get { return _enablePasswordRetrieval; }
-        }
-        public override bool RequiresQuestionAndAnswer
-        {
-            get { return _requiresQuestionAndAnswer; }
-        }
-        public override bool RequiresUniqueEmail
-        {
-            get { return _requiresUniqueEmail; }
-        }
-        public override int MaxInvalidPasswordAttempts
-        {
-            get { return _maxInvalidPasswordAttempts; }
-        }
-        public override int PasswordAttemptWindow
-        {
-            get { return _passwordAttemptWindow; }
-        }
-        public override MembershipPasswordFormat PasswordFormat
-        {
-            get { return _passwordFormat; }
-        }
-        public override int MinRequiredNonAlphanumericCharacters
-        {
-            get { return _minRequiredNonAlphanumericCharacters; }
-        }
-        public override int MinRequiredPasswordLength
-        {
-            get { return _minRequiredPasswordLength; }
-        }
-        public override string PasswordStrengthRegularExpression
-        {
-            get { return _passwordStrengthRegularExpression; }
         }
 
         // If false, exceptions are thrown to the caller. If true,
@@ -332,45 +292,42 @@ namespace Challenge.Membership
         {
             Models.User usr = null;
             MembershipUser u = null;
-
-            using (ISession session = SessionFactory.OpenSession())
-            {
-                using (ITransaction transaction = session.BeginTransaction())
-                {
-
-                    try
-                    {
-                        if (isKeySupplied)
-                            usr = session.CreateCriteria(typeof(Models.User))
-                                            .Add(NHibernate.Criterion.Restrictions.Eq("Id", (int)providerUserKey))
-                                            .UniqueResult<Models.User>();
-
-                        else
-                            usr = session.CreateCriteria(typeof(Models.User))
-                                            .Add(NHibernate.Criterion.Restrictions.Eq("Username", username))
-                                            .Add(NHibernate.Criterion.Restrictions.Eq("ApplicationName", this.ApplicationName))
-                                            .UniqueResult<Models.User>();
-
-                        if (usr != null)
+            using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
+                using (ISession session = sessionFactory.OpenSession()){
+                    using (ITransaction transaction = session.BeginTransaction()){
+                        try
                         {
-                            u = GetMembershipUserFromUser(usr);
+                            if (isKeySupplied)
+                                usr = session.CreateCriteria(typeof(Models.User))
+                                                .Add(NHibernate.Criterion.Restrictions.Eq("Id", (int)providerUserKey))
+                                                .UniqueResult<Models.User>();
 
-                            if (userIsOnline)
+                            else
+                                usr = session.CreateCriteria(typeof(Models.User))
+                                                .Add(Restrictions.Eq("username", username))
+                                                .UniqueResult<Models.User>();
+
+                            if (usr != null)
                             {
-                                usr.userMembership.LastActivityDate = System.DateTime.Now;
-                                session.Update(usr);
-                                transaction.Commit();
+                                u = GetMembershipUserFromUser(usr);
+
+                                if (userIsOnline)
+                                {
+                                    usr.userMembership.LastActivityDate = System.DateTime.Now;
+                                    session.Update(usr);
+                                    transaction.Commit();
+                                }
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        if (WriteExceptionsToEventLog)
-                            WriteToEventLog(e, "GetUser(Object, Boolean)");
-                        throw new ProviderException(exceptionMessage);
+                        catch (Exception e)
+                        {
+                            if (WriteExceptionsToEventLog)
+                                WriteToEventLog(e, "GetUser(Object, Boolean)");
+                            throw new ProviderException(exceptionMessage);
+                        }
                     }
                 }
-            }
+        }
             return u;
         }
 
@@ -384,12 +341,15 @@ namespace Challenge.Membership
 
                     try
                     {
+                        /* Implementacion Directa con la tabla custom membership
                         usr = session.CreateCriteria<Models.User>()
                                         .Add(Restrictions.Eq("Username", username))
                                         .Add(Restrictions.Eq("ApplicationName", this.ApplicationName))
                                         .UniqueResult<Models.User>();
-
-
+                         * */
+                        usr = session.CreateCriteria<Models.User>()
+                                        .Add(Restrictions.Eq("username", username))
+                                        .UniqueResult<Models.User>();
                     }
                     catch (Exception e)
                     {
@@ -469,8 +429,7 @@ namespace Challenge.Membership
                     try
                     {
                         usrs = session.CreateCriteria(typeof(Models.User))
-                                        .Add(NHibernate.Criterion.Restrictions.Like("Email", emailToMatch))
-                                        .Add(NHibernate.Criterion.Restrictions.Eq("ApplicationName", this.ApplicationName))
+                                        .Add(Restrictions.Like("email", emailToMatch))
                                         .List<Models.User>();
 
                     }
@@ -545,7 +504,7 @@ namespace Challenge.Membership
         }
 
         //OKKK
-        public override MembershipUser CreateUser(string username, string password, string email, string passwordQuestion, string passwordAnswer, bool isApproved, object providerUserKey, out MembershipCreateStatus status, string twitterAccount)
+        public override MembershipUser CreateUser(string username, string password, string email, string passwordQuestion, string passwordAnswer, bool isApproved, object providerUserKey, out MembershipCreateStatus status)
         {
             ValidatePasswordEventArgs args = new ValidatePasswordEventArgs(username, password, true);
 
@@ -598,7 +557,7 @@ namespace Challenge.Membership
                             user.email = email;
                             user.password = password;
                             user.salt = "";
-                            user.twitterAccount = twitterAccount;
+                            user.twitterAccount = "";
                             user.userMembership = userMembership;
 
                             try
@@ -636,12 +595,12 @@ namespace Challenge.Membership
 
         public override bool EnablePasswordReset
         {
-            get { throw new NotImplementedException(); }
+            get { return _enablePasswordReset; }
         }
 
         public override bool EnablePasswordRetrieval
         {
-            get { throw new NotImplementedException(); }
+            get { return _enablePasswordRetrieval; }
         }
 
         public override MembershipUserCollection FindUsersByEmail(string emailToMatch, int pageIndex, int pageSize, out int totalRecords)
@@ -713,42 +672,43 @@ namespace Challenge.Membership
 
         public override int MaxInvalidPasswordAttempts
         {
-            get { throw new NotImplementedException(); }
+            get { return _maxInvalidPasswordAttempts; }
         }
 
-        public override int MinRequiredNonAlphanumericCharacters
-        {
-            get { throw new NotImplementedException(); }
-        }
 
         public override int MinRequiredPasswordLength
         {
-            get { throw new NotImplementedException(); }
+            get { return _minRequiredPasswordLength; }
         }
 
         public override int PasswordAttemptWindow
         {
-            get { throw new NotImplementedException(); }
+            get { return _passwordAttemptWindow; }
         }
 
         public override MembershipPasswordFormat PasswordFormat
         {
-            get { throw new NotImplementedException(); }
+            get { return _passwordFormat; }
         }
 
         public override string PasswordStrengthRegularExpression
         {
-            get { throw new NotImplementedException(); }
+            get { return _passwordStrengthRegularExpression; }
+        }
+
+        public override int MinRequiredNonAlphanumericCharacters
+        {
+            get { return _minRequiredNonAlphanumericCharacters; }
         }
 
         public override bool RequiresQuestionAndAnswer
         {
-            get { throw new NotImplementedException(); }
+            get { return _requiresQuestionAndAnswer; }
         }
 
         public override bool RequiresUniqueEmail
         {
-            get { throw new NotImplementedException(); }
+            get { return _requiresUniqueEmail; }
         }
 
         public override string ResetPassword(string username, string answer)
@@ -768,7 +728,52 @@ namespace Challenge.Membership
 
         public override bool ValidateUser(string username, string password)
         {
-            throw new NotImplementedException();
+            bool isValid = false;
+            Models.User user = null;
+            
+            using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
+                using(var _session = sessionFactory.OpenSession()){
+                    using(ITransaction transaction = _session.BeginTransaction()){
+                        try
+                        {
+                            user = GetUserByUsername(username);
+                            if (user == null)
+                                return isValid;
+                            
+                            if(user.userMembership.IsLockedOut)
+                                return isValid;
+
+                            if (CheckPassword(password, user.password))
+                            {
+                                if (user.userMembership.IsApproved)
+                                {
+                                    isValid = true;
+                                    user.userMembership.LastLoginDate = DateTime.Now;
+                                    _session.Update(user);
+                                    transaction.Commit();
+                                }
+                            }
+                            //else
+                                //UpdateFailureCount(username, "password");
+
+
+                        }
+                        catch (Exception e)
+                        {
+                            if (WriteExceptionsToEventLog)
+                            {
+                                WriteToEventLog(e, "ValidateUser");
+                                throw new ProviderException(exceptionMessage);
+                            }
+                            throw e;
+                        }
+
+                    }
+
+                }
+            }
+            return isValid;
         }
+
     }
 }

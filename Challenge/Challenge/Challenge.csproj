@@ -11,7 +11,7 @@
     <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Challenge</RootNamespace>
+    <RootNamespace>Security</RootNamespace>
     <AssemblyName>Challenge</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <MvcBuildViews>false</MvcBuildViews>
@@ -158,8 +158,11 @@
     <Compile Include="Areas\HelpPage\SampleGeneration\SampleDirection.cs" />
     <Compile Include="Areas\HelpPage\SampleGeneration\TextSample.cs" />
     <Compile Include="Areas\HelpPage\XmlDocumentationProvider.cs" />
+    <Compile Include="BasicAuthenticationHandler.cs" />
     <Compile Include="Configuration\FluentNhibernateConfiguration.cs" />
+    <Compile Include="Controllers\AuthenticateController.cs" />
     <Compile Include="Controllers\EntryController.cs" />
+    <Compile Include="Controllers\UserController.cs" />
     <Compile Include="fonts\Controllers\HomeController.cs" />
     <Compile Include="fonts\Controllers\ValuesController.cs" />
     <Compile Include="Global.asax.cs">
@@ -177,7 +180,7 @@
     <Compile Include="Models\User.cs" />
     <Compile Include="Models\UserMembership.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Membership\ChallengeCustomMembershipProvider.cs" />
+    <Compile Include="Security\ChallengeCustomMembershipProvider.cs" />
     <Compile Include="Role\ChallengeCustomRoleProvider.cs" />
     <Compile Include="TypeMappers\EntryDTO.cs" />
     <Compile Include="TypeMappers\TweetDTO.cs" />

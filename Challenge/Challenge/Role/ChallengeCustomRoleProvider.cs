@@ -11,7 +11,7 @@ namespace Challenge.Role
     public class ChallengeCustomRoleProvider : RoleProvider
     {
         //private region
-        private string eventSource = "Challenge";
+        private string eventSource = "ChallengeCustomRoleProvider";
         private string eventLog = "Application";
         private string exceptionMessage = "An exception occurred. Please check the Event Log.";
         private string connectionString;
@@ -24,11 +24,6 @@ namespace Challenge.Role
         private static ISessionFactory SessionFactory
         {
             get { return _sessionFactory; }
-        }
-        public override string ApplicationName
-        {
-            get { return _applicationName; }
-            set { _applicationName = value; }
         }
 
         public bool WriteExceptionsToEventLog { get; set; }
@@ -63,14 +58,8 @@ namespace Challenge.Role
 
         public override string ApplicationName
         {
-            get
-            {
-                throw new NotImplementedException();
-            }
-            set
-            {
-                throw new NotImplementedException();
-            }
+            get { return _applicationName; }
+            set { _applicationName = value; }
         }
 
         public override void CreateRole(string roleName)
