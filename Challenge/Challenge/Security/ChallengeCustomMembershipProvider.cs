@@ -3,6 +3,7 @@ using NHibernate;
 using NHibernate.Criterion;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Configuration.Provider;
 using System.Diagnostics;
 using System.Linq;
@@ -25,26 +26,75 @@ namespace Challenge.Security
         private string connectionString;
 
         private static ISessionFactory _sessionFactory;
-        private string _applicationName;
-        private bool _enablePasswordReset;
-        private bool _enablePasswordRetrieval;
-        private bool _requiresQuestionAndAnswer;
-        private bool _requiresUniqueEmail;
-        private int _maxInvalidPasswordAttempts;
-        private int _passwordAttemptWindow;
-        private MembershipPasswordFormat _passwordFormat;
+        private string applicationName;
+        private bool enablePasswordReset;
+        private bool enablePasswordRetrieval;
+        private bool requiresQuestionAndAnswer;
+        private bool requiresUniqueEmail;
+        private int maxInvalidPasswordAttempts;
+        private int passwordAttemptWindow;
+        private MembershipPasswordFormat passwordFormat;
         // Used when determining encryption key values.
-        private MachineKeySection _machineKey;
-        private int _minRequiredNonAlphanumericCharacters;
-        private int _minRequiredPasswordLength;
-        private string _passwordStrengthRegularExpression;
+        private MachineKeySection machineKey;
+        private int minRequiredNonAlphanumericCharacters;
+        private int minRequiredPasswordLength;
+        private string passwordStrengthRegularExpression;
         //end of private region
+
+        public override void Initialize(string name, NameValueCollection config)
+        {
+            if (config == null)
+            {
+                throw new ArgumentNullException("config");
+            }
+
+            base.Initialize(name, config);
+
+            applicationName = config["applicationName"];
+            enablePasswordRetrieval = Convert.ToBoolean(config["enablePasswordRetrieval"]);
+            enablePasswordReset = Convert.ToBoolean(config["enablePasswordReset"]);
+            requiresQuestionAndAnswer = Convert.ToBoolean(config["requiresQuestionAndAnswer"]);
+            requiresUniqueEmail = Convert.ToBoolean(config["requiresUniqueEmail"]);
+            maxInvalidPasswordAttempts = Convert.ToInt32(config["maxInvalidPasswordAttempts"]);
+            minRequiredPasswordLength = Convert.ToInt32(config["minRequiredPasswordLength"]);
+            minRequiredNonAlphanumericCharacters = Convert.ToInt32(config["minRequiredNonalphanumericCharacters"]);
+            passwordAttemptWindow = Convert.ToInt32(config["passwordAttemptWindow"]);
+            WriteExceptionsToEventLog = true;
+            string passformat = config["passwordFormat"];
+
+            switch (passformat)
+            {
+                case "Hashed":
+                    passwordFormat = MembershipPasswordFormat.Hashed;
+                    break;
+                case "Encrypted":
+                    passwordFormat = MembershipPasswordFormat.Encrypted;
+                    break;
+                case "Clear":
+                    passwordFormat = MembershipPasswordFormat.Clear;
+                    break;
+                default:
+                    throw new ProviderException("Password format not supported.");
+            }
+
+           //Get encryption and decryption key information from the configuration.
+          System.Configuration.Configuration cfg = WebConfigurationManager.OpenWebConfiguration(System.Web.Hosting.HostingEnvironment.ApplicationVirtualPath);
+          machineKey = cfg.GetSection("system.web/machineKey") as MachineKeySection;
+
+          if (machineKey.ValidationKey.Contains("AutoGenerate"))
+          {
+            if (PasswordFormat != MembershipPasswordFormat.Clear)
+            {
+              throw new ProviderException("Hashed or Encrypted passwords are not supported with auto-generated keys.");
+            }
+          }
+        }
 
         //public section
         public override string ApplicationName
         {
-            get { return _applicationName;}
-            set { _applicationName = value;}
+            get { return applicationName; }
+            set { applicationName = value; }
         }
 
         // If false, exceptions are thrown to the caller. If true,
@@ -59,15 +109,6 @@ namespace Challenge.Security
         //end of public section
 
         //Helper function section
-        // A Function to retrieve config values from the configuration file
-        private string GetConfigValue(string configValue, string defaultValue)
-        {
-            if (String.IsNullOrEmpty(configValue))
-                return defaultValue;
-
-            return configValue;
-        }
-
         //Fn to create a Membership user from a Entities.Users class
         private MembershipUser GetMembershipUserFromUser(Models.User usr)
         {
@@ -181,6 +222,45 @@ namespace Challenge.Security
 
         }
 
+        public string GetErrorMessage(MembershipCreateStatus status)
+        {
+            switch (status)
+            {
+                case MembershipCreateStatus.DuplicateUserName:
+                    return "Username already exists. Please enter a different user name.";
+
+                case MembershipCreateStatus.DuplicateEmail:
+                    return "A username for that e-mail address already exists. Please enter a different e-mail address.";
+
+                case MembershipCreateStatus.InvalidPassword:
+                    return "The password provided is invalid. Please enter a valid password value.";
+
+                case MembershipCreateStatus.InvalidEmail:
+                    return "The e-mail address provided is invalid. Please check the value and try again.";
+
+                case MembershipCreateStatus.InvalidAnswer:
+                    return "The password retrieval answer provided is invalid. Please check the value and try again.";
+
+                case MembershipCreateStatus.InvalidQuestion:
+                    return "The password retrieval question provided is invalid. Please check the value and try again.";
+
+                case MembershipCreateStatus.InvalidUserName:
+                    return "The user name provided is invalid. Please check the value and try again.";
+
+                case MembershipCreateStatus.ProviderError:
+                    return "The authentication provider returned an error. Please verify your entry and try again. If the problem persists, please contact your system administrator.";
+
+                case MembershipCreateStatus.UserRejected:
+                    return "The user creation request has been canceled. Please verify your entry and try again. If the problem persists, please contact your system administrator.";
+                
+                case MembershipCreateStatus.Success:
+                    return "The user was successfully created.";
+
+                default:
+                    return "An unknown error occurred. Please verify your entry and try again. If the problem persists, please contact your system administrator.";
+            }
+        }
+
         //CheckPassword: Compares password values based on the MembershipPasswordFormat.
         private bool CheckPassword(string password, string dbpassword)
         {
@@ -222,7 +302,7 @@ namespace Challenge.Security
                     break;
                 case MembershipPasswordFormat.Hashed:
                     HMACSHA1 hash = new HMACSHA1();
-                    hash.Key = HexToByte(_machineKey.ValidationKey);
+                    hash.Key = HexToByte(machineKey.ValidationKey);
                     encodedPassword =
                       Convert.ToBase64String(hash.ComputeHash(Encoding.Unicode.GetBytes(password)));
                     break;
@@ -280,7 +360,7 @@ namespace Challenge.Security
             message += "Action: " + action + "\n\n";
             message += "Exception: " + e.ToString();
 
-            log.WriteEntry(message);
+            Debug.WriteLine(message);
         }
 
         //End region
@@ -515,7 +595,7 @@ namespace Challenge.Security
                 return null;
             }
 
-            if (RequiresUniqueEmail && GetUserNameByEmail(email) != "")
+            if (RequiresUniqueEmail && GetUserNameByEmail(email) != null)
             {
                 status = MembershipCreateStatus.DuplicateEmail;
                 return null;
@@ -544,7 +624,7 @@ namespace Challenge.Security
                             userMembership.CreationDate = createDate;
                             userMembership.LastPasswordChangedDate = createDate;
                             userMembership.LastActivityDate = createDate;
-                            userMembership.ApplicationName = _applicationName;
+                            userMembership.ApplicationName = applicationName;
                             userMembership.IsLockedOut = false;
                             userMembership.LastLockedOutDate = createDate;
                             userMembership.FailedPasswordAttemptCount = 0;
@@ -552,17 +632,14 @@ namespace Challenge.Security
                             userMembership.FailedPasswordAnswerAttemptCount = 0;
                             userMembership.FailedPasswordAnswerAttemptWindowStart = createDate;
 
-                            Models.User user = new Models.User();
-                            user.username = username;
-                            user.email = email;
-                            user.password = password;
+                            Models.User user = (Models.User)providerUserKey;
+                            user.password = userMembership.Password;
                             user.salt = "";
-                            user.twitterAccount = "";
                             user.userMembership = userMembership;
 
                             try
                             {
-                                int retId = (int)_session.Save(user);
+                                int retId = (int)_session.Save(userMembership);
                                 transaction.Commit();
                                 if (retId < 1)
                                     status = MembershipCreateStatus.UserRejected;
@@ -584,7 +661,7 @@ namespace Challenge.Security
             }
             else
                 status = MembershipCreateStatus.DuplicateUserName;
-            return null;
+                return null;
         }
 
         //OKKKK
@@ -595,12 +672,12 @@ namespace Challenge.Security
 
         public override bool EnablePasswordReset
         {
-            get { return _enablePasswordReset; }
+            get { return enablePasswordReset; }
         }
 
         public override bool EnablePasswordRetrieval
         {
-            get { return _enablePasswordRetrieval; }
+            get { return enablePasswordRetrieval; }
         }
 
         public override MembershipUserCollection FindUsersByEmail(string emailToMatch, int pageIndex, int pageSize, out int totalRecords)
@@ -667,48 +744,48 @@ namespace Challenge.Security
             if (user == null)
                 return null;
             else
-                return user.userMembership.Username;
+                return user.username;
         }
 
         public override int MaxInvalidPasswordAttempts
         {
-            get { return _maxInvalidPasswordAttempts; }
+            get { return maxInvalidPasswordAttempts; }
         }
 
 
         public override int MinRequiredPasswordLength
         {
-            get { return _minRequiredPasswordLength; }
+            get { return minRequiredPasswordLength; }
         }
 
         public override int PasswordAttemptWindow
         {
-            get { return _passwordAttemptWindow; }
+            get { return passwordAttemptWindow; }
         }
 
         public override MembershipPasswordFormat PasswordFormat
         {
-            get { return _passwordFormat; }
+            get { return passwordFormat; }
         }
 
         public override string PasswordStrengthRegularExpression
         {
-            get { return _passwordStrengthRegularExpression; }
+            get { return passwordStrengthRegularExpression; }
         }
 
         public override int MinRequiredNonAlphanumericCharacters
         {
-            get { return _minRequiredNonAlphanumericCharacters; }
+            get { return minRequiredNonAlphanumericCharacters; }
         }
 
         public override bool RequiresQuestionAndAnswer
         {
-            get { return _requiresQuestionAndAnswer; }
+            get { return requiresQuestionAndAnswer; }
         }
 
         public override bool RequiresUniqueEmail
         {
-            get { return _requiresUniqueEmail; }
+            get { return requiresUniqueEmail; }
         }
 
         public override string ResetPassword(string username, string answer)

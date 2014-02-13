@@ -31,12 +31,13 @@ namespace Challenge.Controllers
         {
             try
             {
-                
-                MembershipCreateStatus status = new MembershipCreateStatus();
-                var newUser = _membershipProvider.CreateUser(user.username, user.password, user.email, "", "", true, "", out status);
 
-                var response = new Response((int)HttpStatusCode.OK, "success", newUser);
+                MembershipCreateStatus status = new MembershipCreateStatus();
+                var newUser = _membershipProvider.CreateUser(user.username, user.password, user.email, "", "", true, user, out status);
+
+                var response = new Response((int)HttpStatusCode.OK, "success", _membershipProvider.GetErrorMessage(status));
                 return Request.CreateResponse(HttpStatusCode.OK, response);
+
             }
             catch (Exception)
             {

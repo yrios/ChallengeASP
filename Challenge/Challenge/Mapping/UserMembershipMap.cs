@@ -33,7 +33,7 @@ namespace Challenge.Mapping
             Map(x => x.FailedPasswordAttemptWindowStart);
             Map(x => x.FailedPasswordAnswerAttemptWindowStart);
             HasManyToMany(x => x.Roles);
-            
+            HasMany( x => x.User);
 
         }
 
