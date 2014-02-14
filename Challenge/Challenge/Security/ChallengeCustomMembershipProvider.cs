@@ -50,6 +50,7 @@ namespace Challenge.Security
 
             base.Initialize(name, config);
 
+
             applicationName = config["applicationName"];
             enablePasswordRetrieval = Convert.ToBoolean(config["enablePasswordRetrieval"]);
             enablePasswordReset = Convert.ToBoolean(config["enablePasswordReset"]);
@@ -414,28 +415,27 @@ namespace Challenge.Security
         private Models.User GetUserByUsername(string username)
         {
             Models.User usr = null;
-            using (ISession session = SessionFactory.OpenSession())
-            {
-                using (ITransaction transaction = session.BeginTransaction())
-                {
-
-                    try
-                    {
-                        /* Implementacion Directa con la tabla custom membership
-                        usr = session.CreateCriteria<Models.User>()
-                                        .Add(Restrictions.Eq("Username", username))
-                                        .Add(Restrictions.Eq("ApplicationName", this.ApplicationName))
-                                        .UniqueResult<Models.User>();
-                         * */
-                        usr = session.CreateCriteria<Models.User>()
-                                        .Add(Restrictions.Eq("username", username))
-                                        .UniqueResult<Models.User>();
-                    }
-                    catch (Exception e)
-                    {
-                        if (WriteExceptionsToEventLog)
-                            WriteToEventLog(e, "UnlockUser");
-                        throw new ProviderException(exceptionMessage);
+            using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
+                using (var session = sessionFactory.OpenSession()){
+                    using (ITransaction transaction = session.BeginTransaction()){
+                        try
+                        {
+                            /* Implementacion Directa con la tabla custom membership
+                            usr = session.CreateCriteria<Models.User>()
+                                            .Add(Restrictions.Eq("Username", username))
+                                            .Add(Restrictions.Eq("ApplicationName", this.ApplicationName))
+                                            .UniqueResult<Models.User>();
+                             * */
+                            usr = session.CreateCriteria<Models.User>()
+                                            .Add(Restrictions.Eq("username", username))
+                                            .UniqueResult<Models.User>();
+                        }
+                        catch (Exception e)
+                        {
+                            if (WriteExceptionsToEventLog)
+                                WriteToEventLog(e, "UnlockUser");
+                            throw new ProviderException(exceptionMessage);
+                        }
                     }
                 }
             }
@@ -632,14 +632,17 @@ namespace Challenge.Security
                             userMembership.FailedPasswordAnswerAttemptCount = 0;
                             userMembership.FailedPasswordAnswerAttemptWindowStart = createDate;
 
+
                             Models.User user = (Models.User)providerUserKey;
                             user.password = userMembership.Password;
                             user.salt = "";
                             user.userMembership = userMembership;
 
+                           
                             try
                             {
                                 int retId = (int)_session.Save(userMembership);
+                                _session.Save(user);
                                 transaction.Commit();
                                 if (retId < 1)
                                     status = MembershipCreateStatus.UserRejected;
@@ -807,26 +810,26 @@ namespace Challenge.Security
         {
             bool isValid = false;
             Models.User user = null;
+
+            user = GetUserByUsername(username);
+            if (user == null)
+                return isValid;
+
+            if (user.userMembership.IsLockedOut)
+                return isValid;
             
             using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
                 using(var _session = sessionFactory.OpenSession()){
                     using(ITransaction transaction = _session.BeginTransaction()){
                         try
                         {
-                            user = GetUserByUsername(username);
-                            if (user == null)
-                                return isValid;
-                            
-                            if(user.userMembership.IsLockedOut)
-                                return isValid;
-
                             if (CheckPassword(password, user.password))
                             {
                                 if (user.userMembership.IsApproved)
                                 {
                                     isValid = true;
                                     user.userMembership.LastLoginDate = DateTime.Now;
-                                    _session.Update(user);
+                                    _session.Update(user.userMembership);
                                     transaction.Commit();
                                 }
                             }

@@ -1,4 +1,5 @@
-﻿using Challenge.Security;
+﻿using Challenge.HttpResponses;
+using Challenge.Security;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,6 +9,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
+using System.Web.Security;
 
 namespace Challenge
 {
@@ -17,27 +19,27 @@ namespace Challenge
         public const string ChallengeAuthenticationHeaderName = "WWW-Authenticate";
         public const char AuthorizationHeaderSeparator = ':';
 
-        private readonly ChallengeCustomMembershipProvider _membershipProvider;
+        private readonly ChallengeCustomMembershipProvider  _membershipProvider = (ChallengeCustomMembershipProvider)Membership.Provider;
 
         public BasicAuthenticationHandler()
         {
 
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken)
         {
             Debug.WriteLine("Se ejecuta el Handler");
             var authHeader = request.Headers.Authorization;
             if (authHeader == null)
             {
                 //return CreateUnauthorizedResponse();
-                return base.SendAsync(request, cancellationToken);
+                return await base.SendAsync(request, cancellationToken);
             }
                 
             if(authHeader.Scheme != BasicScheme)
             {
                 //return CreateUnauthorizedResponse();
-                return base.SendAsync(request, cancellationToken);
+                return await base.SendAsync(request, cancellationToken);
             }
 
             var encodedCredentials = authHeader.Parameter;
@@ -47,7 +49,7 @@ namespace Challenge
 
             if(credentialsParts.Length != 2)
             {
-                return CreateUnauthorizedResponse();
+                return CreateUnauthorizedResponse(request);
             }
             var username = credentialsParts[0].Trim();
             var password = credentialsParts[1].Trim();
@@ -56,22 +58,18 @@ namespace Challenge
 
             if (!_membershipProvider.ValidateUser(username, password))
             {
-                return CreateUnauthorizedResponse();
+                return CreateUnauthorizedResponse(request);
             }
 
-            
+            Debug.WriteLine("DE USER IS VALID");
 
-            return base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, cancellationToken);
         }
 
-        private Task<HttpResponseMessage> CreateUnauthorizedResponse()
+        private HttpResponseMessage CreateUnauthorizedResponse(HttpRequestMessage request)
         {
-            var response = new HttpResponseMessage(HttpStatusCode.Unauthorized);
-            //response.Headers.Add(ChallengeAuthenticationHeaderName, BasicScheme);
-
-            var taskCompletionSource = new TaskCompletionSource<HttpResponseMessage>();
-            taskCompletionSource.SetResult(response);
-            return taskCompletionSource.Task;
+            var response = new Response((int)HttpStatusCode.Unauthorized, "unauthorized", "Unauthorized user credentials");
+            return request.CreateResponse(HttpStatusCode.OK, response);
         }
     }
 }

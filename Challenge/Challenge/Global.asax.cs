@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Challenge.Configuration;
+using NHibernate;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -11,8 +13,12 @@ namespace Challenge
 {
     public class WebApiApplication : System.Web.HttpApplication
     {
+
+        public static ISessionFactory SessionFactory { get; private set; }
+
         protected void Application_Start()
         {
+            SessionFactory = FluentNhibernateConfiguration.CreateSessionFactory();
             AreaRegistration.RegisterAllAreas();
             GlobalConfiguration.Configure(WebApiConfig.Register);
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);

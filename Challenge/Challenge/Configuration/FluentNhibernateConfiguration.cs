@@ -17,6 +17,7 @@ namespace Challenge.Configuration
             return Fluently.Configure()
                 .Database(MySQLConfiguration.Standard.ConnectionString(c => c.FromConnectionStringWithKey("mysqlConnection")))
                 .Mappings(m => m.FluentMappings.AddFromAssembly(Assembly.GetExecutingAssembly()))
+                .CurrentSessionContext("web")
                 .BuildSessionFactory();
         }
     }

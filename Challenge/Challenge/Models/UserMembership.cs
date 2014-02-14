@@ -16,6 +16,8 @@ namespace Challenge.Models
             this.FailedPasswordAnswerAttemptWindowStart = DateTime.MinValue;
             this.FailedPasswordAttemptWindowStart = DateTime.MinValue;
             this.LastLoginDate = DateTime.MinValue;
+            Roles = new List<RoleMembership>();
+            Users = new List<User>();
         }
 
         public virtual int Id { get; set; }
@@ -39,8 +41,7 @@ namespace Challenge.Models
         public virtual DateTime FailedPasswordAttemptWindowStart { get; set; }
         public virtual DateTime FailedPasswordAnswerAttemptWindowStart { get; set; }
         public virtual IList<RoleMembership> Roles { get; set; }
-        public virtual IList<User> User { get; set; }
-
+        public virtual IList<User> Users { get; set; }
 
 
         public virtual void AddRole(RoleMembership role)
@@ -54,5 +55,6 @@ namespace Challenge.Models
             role.UsersInRole.Remove(this);
             Roles.Remove(role);
         }
+
     }
 }
