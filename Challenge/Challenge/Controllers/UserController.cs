@@ -11,9 +11,10 @@ using System.Web.Security;
 
 namespace Challenge.Controllers
 {
+    [LoggingNHibernateSession]
     public class UserController : ApiController
     {
-        private readonly ChallengeCustomMembershipProvider _membershipProvider = (ChallengeCustomMembershipProvider)Membership.Provider;
+        private readonly ChallengeCustomMembershipProvider _membershipProvider = WebApiApplication.MembershipProvider;
         // GET api/user
         public IEnumerable<string> Get()
         {

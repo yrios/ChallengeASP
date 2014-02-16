@@ -15,9 +15,19 @@ using Newtonsoft.Json;
 
 namespace Challenge.Controllers
 {
+    [LoggingNHibernateSession]
     public class EntryController : ApiController
     {
+
+        //private readonly ISession _session = WebApiApplication.SessionFactory.GetCurrentSession();
+        //private readonly ISession _session;
+        public EntryController()
+        {
+
+        }
         // GET api/<controller>
+        /*
+        [LoggingNHibernateSession]
         public IEnumerable<EntryDTO> Get()
         {
             var _ListEntry = new List<EntryDTO>();
@@ -35,6 +45,21 @@ namespace Challenge.Controllers
                     return _ListEntry;
                 }
             } 
+        }
+        */
+        
+        public IEnumerable<EntryDTO> Get()
+        {
+            var _session = WebApiApplication.SessionFactory.GetCurrentSession();
+            var _ListEntry = new List<EntryDTO>();
+            var entries = _session.QueryOver<Entry>().List();
+
+            foreach (var item in entries)
+            {
+                EntryDTO _entry = new EntryDTO();
+                _ListEntry.Add(EntryDTO.creatEntry(item));
+            }
+            return _ListEntry;
         }
 
         // GET api/<controller>?user_id[id] retorna las entradas de un usuario especifico

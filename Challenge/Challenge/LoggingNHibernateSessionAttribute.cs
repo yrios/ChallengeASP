@@ -2,10 +2,13 @@
 using NHibernate.Context;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Http.Controllers;
 using System.Web.Http.Filters;
+
+
 
 namespace Challenge
 {
@@ -20,9 +23,11 @@ namespace Challenge
 
         public override void OnActionExecuting(HttpActionContext actionContext)
         {
+            Debug.WriteLine("On action Executing");
             var session = SessionFactory.OpenSession();
             CurrentSessionContext.Bind(session);
             session.BeginTransaction();
+            base.OnActionExecuting(actionContext);
         }
 
         public override void OnActionExecuted(HttpActionExecutedContext actionExecutedContext)

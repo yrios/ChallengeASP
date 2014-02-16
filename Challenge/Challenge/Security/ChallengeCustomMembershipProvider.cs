@@ -1,5 +1,6 @@
 ﻿using Challenge.Configuration;
 using NHibernate;
+using NHibernate.Context;
 using NHibernate.Criterion;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,7 @@ namespace Challenge.Security
         private string connectionString;
 
         private static ISessionFactory _sessionFactory;
+        private static ISession _session;
         private string applicationName;
         private bool enablePasswordReset;
         private bool enablePasswordRetrieval;
@@ -50,7 +52,7 @@ namespace Challenge.Security
 
             base.Initialize(name, config);
 
-
+            _sessionFactory = WebApiApplication.SessionFactory;
             applicationName = config["applicationName"];
             enablePasswordRetrieval = Convert.ToBoolean(config["enablePasswordRetrieval"]);
             enablePasswordReset = Convert.ToBoolean(config["enablePasswordReset"]);
@@ -368,65 +370,64 @@ namespace Challenge.Security
 
         //region private methods
 
+        //Implemented
         //single fn to get a membership user by key or username
         private MembershipUser GetMembershipUserByKeyOrUser(bool isKeySupplied, string username, object providerUserKey, bool userIsOnline)
         {
             Models.User usr = null;
             MembershipUser u = null;
-            using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                using (ISession session = sessionFactory.OpenSession()){
-                    using (ITransaction transaction = session.BeginTransaction()){
-                        try
-                        {
-                            if (isKeySupplied)
-                                usr = session.CreateCriteria(typeof(Models.User))
-                                                .Add(NHibernate.Criterion.Restrictions.Eq("Id", (int)providerUserKey))
-                                                .UniqueResult<Models.User>();
 
-                            else
-                                usr = session.CreateCriteria(typeof(Models.User))
-                                                .Add(Restrictions.Eq("username", username))
-                                                .UniqueResult<Models.User>();
+            
+            try
+            {
+                if (isKeySupplied)
+                    usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria(typeof(Models.User))
+                                    .Add(NHibernate.Criterion.Restrictions.Eq("Id", (int)providerUserKey))
+                                    .UniqueResult<Models.User>();
 
-                            if (usr != null)
-                            {
-                                u = GetMembershipUserFromUser(usr);
+                else
+                    usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria(typeof(Models.User))
+                                    .Add(Restrictions.Eq("username", username))
+                                    .UniqueResult<Models.User>();
 
-                                if (userIsOnline)
-                                {
-                                    usr.userMembership.LastActivityDate = System.DateTime.Now;
-                                    session.Update(usr);
-                                    transaction.Commit();
-                                }
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            if (WriteExceptionsToEventLog)
-                                WriteToEventLog(e, "GetUser(Object, Boolean)");
-                            throw new ProviderException(exceptionMessage);
-                        }
+                if (usr != null)
+                {
+                    u = GetMembershipUserFromUser(usr);
+
+                    if (userIsOnline)
+                    {
+                        usr.userMembership.LastActivityDate = System.DateTime.Now;
+                        WebApiApplication.SessionFactory.GetCurrentSession().Update(usr);
+                        //transaction.Commit();
                     }
                 }
-        }
+            }
+            catch (Exception e)
+            {
+                if (WriteExceptionsToEventLog)
+                    WriteToEventLog(e, "GetUser(Object, Boolean)");
+                throw new ProviderException(exceptionMessage);
+            }
+   
             return u;
         }
 
+        //Implemented
         private Models.User GetUserByUsername(string username)
         {
             Models.User usr = null;
-            using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                using (var session = sessionFactory.OpenSession()){
-                    using (ITransaction transaction = session.BeginTransaction()){
+            //using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
+                //using (var session = sessionFactory.OpenSession()){
+                    //using (ITransaction transaction = session.BeginTransaction()){
                         try
                         {
                             /* Implementacion Directa con la tabla custom membership
-                            usr = session.CreateCriteria<Models.User>()
+                            usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>()
                                             .Add(Restrictions.Eq("Username", username))
                                             .Add(Restrictions.Eq("ApplicationName", this.ApplicationName))
                                             .UniqueResult<Models.User>();
                              * */
-                            usr = session.CreateCriteria<Models.User>()
+                            usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>()
                                             .Add(Restrictions.Eq("username", username))
                                             .UniqueResult<Models.User>();
                         }
@@ -436,9 +437,9 @@ namespace Challenge.Security
                                 WriteToEventLog(e, "UnlockUser");
                             throw new ProviderException(exceptionMessage);
                         }
-                    }
-                }
-            }
+                    //}
+                //}
+            //}
             return usr;
 
         }
@@ -583,7 +584,7 @@ namespace Challenge.Security
             throw new NotImplementedException();
         }
 
-        //OKKK
+        //Implemented!
         public override MembershipUser CreateUser(string username, string password, string email, string passwordQuestion, string passwordAnswer, bool isApproved, object providerUserKey, out MembershipCreateStatus status)
         {
             ValidatePasswordEventArgs args = new ValidatePasswordEventArgs(username, password, true);
@@ -606,60 +607,49 @@ namespace Challenge.Security
             if (u == null)
             {
                 DateTime createDate = DateTime.Now;
-                using (var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory())
+
+                Models.UserMembership userMembership = new Models.UserMembership();
+                userMembership.Username = username;
+                userMembership.Password = EncodePassword(password);
+                userMembership.Email = email;
+                userMembership.PasswordQuestion = passwordQuestion;
+                userMembership.PasswordAnswer = EncodePassword(passwordAnswer);
+                userMembership.IsApproved = isApproved;
+                userMembership.Comment = "";
+                userMembership.CreationDate = createDate;
+                userMembership.LastPasswordChangedDate = createDate;
+                userMembership.LastActivityDate = createDate;
+                userMembership.ApplicationName = applicationName;
+                userMembership.IsLockedOut = false;
+                userMembership.LastLockedOutDate = createDate;
+                userMembership.FailedPasswordAttemptCount = 0;
+                userMembership.FailedPasswordAttemptWindowStart = createDate;
+                userMembership.FailedPasswordAnswerAttemptCount = 0;
+                userMembership.FailedPasswordAnswerAttemptWindowStart = createDate;
+
+
+                Models.User user = (Models.User)providerUserKey;
+                user.password = userMembership.Password;
+                user.salt = "";
+                user.userMembership = userMembership;
+   
+                try
                 {
-                    using (var _session = sessionFactory.OpenSession())
-                    {
-                        using (ITransaction transaction = _session.BeginTransaction())
-                        {
-
-                            Models.UserMembership userMembership = new Models.UserMembership();
-                            userMembership.Username = username;
-                            userMembership.Password = EncodePassword(password);
-                            userMembership.Email = email;
-                            userMembership.PasswordQuestion = passwordQuestion;
-                            userMembership.PasswordAnswer = EncodePassword(passwordAnswer);
-                            userMembership.IsApproved = isApproved;
-                            userMembership.Comment = "";
-                            userMembership.CreationDate = createDate;
-                            userMembership.LastPasswordChangedDate = createDate;
-                            userMembership.LastActivityDate = createDate;
-                            userMembership.ApplicationName = applicationName;
-                            userMembership.IsLockedOut = false;
-                            userMembership.LastLockedOutDate = createDate;
-                            userMembership.FailedPasswordAttemptCount = 0;
-                            userMembership.FailedPasswordAttemptWindowStart = createDate;
-                            userMembership.FailedPasswordAnswerAttemptCount = 0;
-                            userMembership.FailedPasswordAnswerAttemptWindowStart = createDate;
-
-
-                            Models.User user = (Models.User)providerUserKey;
-                            user.password = userMembership.Password;
-                            user.salt = "";
-                            user.userMembership = userMembership;
-
-                           
-                            try
-                            {
-                                int retId = (int)_session.Save(userMembership);
-                                _session.Save(user);
-                                transaction.Commit();
-                                if (retId < 1)
-                                    status = MembershipCreateStatus.UserRejected;
-                                else
-                                    status = MembershipCreateStatus.Success;
-                            }
-                            catch (Exception e)
-                            {
-                                status = MembershipCreateStatus.ProviderError;
-                                if (WriteExceptionsToEventLog)
-                                    WriteToEventLog(e, "CreateUser");
-                            }
-
-                        }
-
-                    }
+                    int retId = (int)WebApiApplication.SessionFactory.GetCurrentSession().Save(userMembership);
+                    WebApiApplication.SessionFactory.GetCurrentSession().Save(user);
+                    //transaction.Commit();
+                    if (retId < 1)
+                        status = MembershipCreateStatus.UserRejected;
+                    else
+                        status = MembershipCreateStatus.Success;
                 }
+                catch (Exception e)
+                {
+                    status = MembershipCreateStatus.ProviderError;
+                    if (WriteExceptionsToEventLog)
+                        WriteToEventLog(e, "CreateUser");
+                }
+
                 return GetUser(username, false);
             }
             else
@@ -711,39 +701,34 @@ namespace Challenge.Security
             throw new NotImplementedException();
         }
 
-        //OKKKK
+        //Implemented
         public override MembershipUser GetUser(string username, bool userIsOnline)
         {
             return GetMembershipUserByKeyOrUser(false, username, 0, userIsOnline);
         }
 
-        //OKKK
+        //Implemented
         public override MembershipUser GetUser(object providerUserKey, bool userIsOnline)
         {
             return GetMembershipUserByKeyOrUser(true, string.Empty, providerUserKey, userIsOnline);
         }
 
-        //OKKKKK
+        //Implemented
         public override string GetUserNameByEmail(string email)
         {
             Models.User user = null;
-            using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                using(var _session = sessionFactory.OpenSession()){
-                    using(ITransaction transaction = _session.BeginTransaction()){
-                        try
-                        {
-                            user = _session.CreateCriteria<Models.User>().Add(Restrictions.Eq("email", email)).UniqueResult<Models.User>();
-                        }
-                        catch (Exception e)
-                        {
-                            if (WriteExceptionsToEventLog)
-                                WriteToEventLog(e, "GetUserNameByEmail");
-                            throw new ProviderException(exceptionMessage);
-                        }
-                    }
-                }
+            //var _session = WebApiApplication.SessionFactory.GetCurrentSession();
+            try
+            {
+                user = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>().Add(Restrictions.Eq("email", email)).UniqueResult<Models.User>();
             }
-
+            catch (Exception e)
+            {
+                if (WriteExceptionsToEventLog)
+                    WriteToEventLog(e, "GetUserNameByEmail");
+                throw new ProviderException(exceptionMessage);
+            }
+    
             if (user == null)
                 return null;
             else
@@ -818,9 +803,9 @@ namespace Challenge.Security
             if (user.userMembership.IsLockedOut)
                 return isValid;
             
-            using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                using(var _session = sessionFactory.OpenSession()){
-                    using(ITransaction transaction = _session.BeginTransaction()){
+            //using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
+                //using(var _session = sessionFactory.OpenSession()){
+                    //using(ITransaction transaction = _session.BeginTransaction()){
                         try
                         {
                             if (CheckPassword(password, user.password))
@@ -829,8 +814,8 @@ namespace Challenge.Security
                                 {
                                     isValid = true;
                                     user.userMembership.LastLoginDate = DateTime.Now;
-                                    _session.Update(user.userMembership);
-                                    transaction.Commit();
+                                    WebApiApplication.SessionFactory.GetCurrentSession().Update(user.userMembership);
+                                    //transaction.Commit();
                                 }
                             }
                             //else
@@ -848,10 +833,10 @@ namespace Challenge.Security
                             throw e;
                         }
 
-                    }
+                    //}
 
-                }
-            }
+                //}
+            //}
             return isValid;
         }
 
