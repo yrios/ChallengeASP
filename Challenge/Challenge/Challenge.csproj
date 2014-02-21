@@ -182,7 +182,7 @@
     <Compile Include="Models\UserMembership.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Security\ChallengeCustomMembershipProvider.cs" />
-    <Compile Include="Role\ChallengeCustomRoleProvider.cs" />
+    <Compile Include="Security\ChallengeCustomRoleProvider.cs" />
     <Compile Include="TypeMappers\EntryDTO.cs" />
     <Compile Include="TypeMappers\TweetDTO.cs" />
     <Compile Include="TypeMappers\UserDTO.cs" />

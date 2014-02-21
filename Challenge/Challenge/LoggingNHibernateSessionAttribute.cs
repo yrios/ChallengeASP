@@ -40,6 +40,7 @@ namespace Challenge
             }
             session = CurrentSessionContext.Unbind(SessionFactory);
             session.Close();
+            session.Dispose();
         }
 
     }

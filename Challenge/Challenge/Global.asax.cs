@@ -18,11 +18,14 @@ namespace Challenge
 
         public static ISessionFactory SessionFactory { get; private set; }
         public static ChallengeCustomMembershipProvider MembershipProvider { get; private set; }
+        public static ChallengeCustomRoleProvider RoleProvider { get; private set; }
 
         protected void Application_Start()
         {
             SessionFactory = FluentNhibernateConfiguration.CreateSessionFactory();
+            RoleProvider = (ChallengeCustomRoleProvider)Roles.Provider;
             MembershipProvider = (ChallengeCustomMembershipProvider)Membership.Provider;
+           
             AreaRegistration.RegisterAllAreas();
             GlobalConfiguration.Configure(WebApiConfig.Register);
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);

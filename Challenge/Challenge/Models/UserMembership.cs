@@ -46,13 +46,13 @@ namespace Challenge.Models
 
         public virtual void AddRole(RoleMembership role)
         {
-            role.UsersInRole.Add(this);
+            //role.UsersInRole.Add(this);
             Roles.Add(role);
         }
 
         public virtual void RemoveRole(RoleMembership role)
         {
-            role.UsersInRole.Remove(this);
+            //role.UsersInRole.Remove(this);
             Roles.Remove(role);
         }
 

@@ -41,6 +41,7 @@ namespace Challenge.Security
         private int minRequiredNonAlphanumericCharacters;
         private int minRequiredPasswordLength;
         private string passwordStrengthRegularExpression;
+        private ChallengeCustomRoleProvider _roleProvider; 
         //end of private region
 
         public override void Initialize(string name, NameValueCollection config)
@@ -53,6 +54,7 @@ namespace Challenge.Security
             base.Initialize(name, config);
 
             _sessionFactory = WebApiApplication.SessionFactory;
+            _roleProvider = WebApiApplication.RoleProvider;
             applicationName = config["applicationName"];
             enablePasswordRetrieval = Convert.ToBoolean(config["enablePasswordRetrieval"]);
             enablePasswordReset = Convert.ToBoolean(config["enablePasswordReset"]);
@@ -444,6 +446,11 @@ namespace Challenge.Security
 
         }
 
+        public String[] GetRolesForUser()
+        {
+            return null;
+        }
+
         private IList<Models.User> GetUsers()
         {
             IList<Models.User> usrs = null;
@@ -637,6 +644,11 @@ namespace Challenge.Security
                 {
                     int retId = (int)WebApiApplication.SessionFactory.GetCurrentSession().Save(userMembership);
                     WebApiApplication.SessionFactory.GetCurrentSession().Save(user);
+
+                    var usernames = new string[] {userMembership.Username};
+                    var roles = new string[]{"Admin"};
+
+                    _roleProvider.AddUsersToRoles(usernames, roles);
                     //transaction.Commit();
                     if (retId < 1)
                         status = MembershipCreateStatus.UserRejected;

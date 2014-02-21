@@ -76,10 +76,6 @@ namespace Challenge
             SetPrincipal(username);
 
             CloseSession();
-
-
-            Debug.WriteLine("DE USER IS VALID");
-
             return await base.SendAsync(request, cancellationToken);
         }
 
@@ -92,9 +88,8 @@ namespace Challenge
         private void SetPrincipal(string username)
         {
             //var roles = _membershipAdapter.
-            GetRolesForUser(username);
+            //GetRolesForUser(username);
             Models.User user = _membershipProvider.GetUserByUsername(username);
-            s
             var identity = CreateIdentity(user.username, user);
 
             var principal = new ClaimsPrincipal(identity);
@@ -125,6 +120,7 @@ namespace Challenge
             }
             session = CurrentSessionContext.Unbind(SessionFactory);
             session.Close();
+            session.Dispose();
         }
     }
 }

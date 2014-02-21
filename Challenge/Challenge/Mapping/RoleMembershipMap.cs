@@ -15,7 +15,10 @@ namespace Challenge.Mapping
             Id(x => x.Id);
             Map(x => x.RoleName);
             Map(x => x.ApplicationName);
-            HasManyToMany(x => x.UsersInRole);
+            HasManyToMany(x => x.UsersInRole).Cascade.All().Inverse()
+                .Table("asp_membershipusersinroles")
+                .ParentKeyColumn("Users_Id")
+                .ChildKeyColumn("Roles_Id");
         }
     }
 }
