@@ -413,7 +413,7 @@ namespace Challenge.Security
         }
 
         //Implemented
-        private Models.User GetUserByUsername(string username)
+        public Models.User GetUserByUsername(string username)
         {
             Models.User usr = null;
             //using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){

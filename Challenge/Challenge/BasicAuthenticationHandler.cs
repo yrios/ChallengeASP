@@ -8,7 +8,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Security.Claims;
+using System.Security.Principal;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Security;
@@ -62,12 +65,19 @@ namespace Challenge
             CurrentSessionContext.Bind(session);
             session.BeginTransaction();
 
+            
+
             if (!_membershipProvider.ValidateUser(username, password))
             {
                 CloseSession();
                 return CreateUnauthorizedResponse(request);
             }
+
+            SetPrincipal(username);
+
             CloseSession();
+
+
             Debug.WriteLine("DE USER IS VALID");
 
             return await base.SendAsync(request, cancellationToken);
@@ -77,6 +87,32 @@ namespace Challenge
         {
             var response = new Response((int)HttpStatusCode.Unauthorized, "unauthorized", "Unauthorized user credentials");
             return request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+        private void SetPrincipal(string username)
+        {
+            //var roles = _membershipAdapter.
+            GetRolesForUser(username);
+            Models.User user = _membershipProvider.GetUserByUsername(username);
+            s
+            var identity = CreateIdentity(user.username, user);
+
+            var principal = new ClaimsPrincipal(identity);
+            Thread.CurrentPrincipal = principal;
+
+            if (HttpContext.Current != null)
+            {
+                HttpContext.Current.User = principal;
+            }
+        }
+
+        private GenericIdentity CreateIdentity(string username, Models.User modelUser)
+        {
+            var identity = new GenericIdentity(username, BasicScheme);
+            identity.AddClaim(new Claim(ClaimTypes.Sid, modelUser.id.ToString()));
+            identity.AddClaim(new Claim(ClaimTypes.GivenName, modelUser.username));
+            identity.AddClaim(new Claim(ClaimTypes.Email, modelUser.email));
+            return identity;
         }
 
         private void CloseSession()
