@@ -26,6 +26,7 @@ namespace Challenge
         public const char AuthorizationHeaderSeparator = ':';
         private ISessionFactory SessionFactory { get; set; }
         private readonly ChallengeCustomMembershipProvider _membershipProvider = WebApiApplication.MembershipProvider;
+        private readonly ChallengeCustomRoleProvider _roleProvider = WebApiApplication.RoleProvider;
 
         public BasicAuthenticationHandler()
         {
@@ -88,11 +89,11 @@ namespace Challenge
         private void SetPrincipal(string username)
         {
             //var roles = _membershipAdapter.
-            //GetRolesForUser(username);
+            var roles = _roleProvider.GetRolesForUser(username);
             Models.User user = _membershipProvider.GetUserByUsername(username);
             var identity = CreateIdentity(user.username, user);
 
-            var principal = new ClaimsPrincipal(identity);
+            var principal = new GenericPrincipal(identity,roles);
             Thread.CurrentPrincipal = principal;
 
             if (HttpContext.Current != null)

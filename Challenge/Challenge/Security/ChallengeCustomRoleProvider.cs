@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Provider;
+using System.Data.Odbc;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -81,14 +82,12 @@ namespace Challenge.Security
                                     .Add(Restrictions.Eq("RoleName", rolename))
                                     .Add(Restrictions.Eq("ApplicationName", applicationName))
                                     .UniqueResult<RoleMembership>();
-
-                            //Entities.Roles role = GetRole(rolename);
+                            
                             usr.AddRole(role);
                         }
                     }
                     _sessionFactory.GetCurrentSession().SaveOrUpdate(usr);
                 }
-                //transaction.Commit();
             }
             catch (Exception e)
             {
@@ -108,7 +107,27 @@ namespace Challenge.Security
 
         public override void CreateRole(string roleName)
         {
-            throw new NotImplementedException();
+            if (roleName.Contains(","))
+                throw new ArgumentException("Role names cannot contain commas.");
+
+            if (RoleExists(roleName))
+                throw new ProviderException("Role name already exists.");
+
+            try
+            {
+                RoleMembership role = new RoleMembership();
+                role.ApplicationName = applicationName;
+                role.RoleName = roleName;
+                _sessionFactory.GetCurrentSession().Save(role);
+            }
+            catch (OdbcException e)
+            {
+                if (writeToEventlog)
+                    WriteToEventLog(e, "CreateRole");
+                else
+                    throw e;
+            }
+          
         }
 
         public override bool DeleteRole(string roleName, bool throwOnPopulatedRole)
@@ -128,7 +147,42 @@ namespace Challenge.Security
 
         public override string[] GetRolesForUser(string username)
         {
-            throw new NotImplementedException();
+            UserMembership usr = null;
+            IList<RoleMembership> usrroles = null;
+            StringBuilder sb = new StringBuilder();
+
+            try
+            {
+                usr = _sessionFactory.GetCurrentSession().CreateCriteria(typeof(UserMembership))
+                                .Add(Restrictions.Eq("Username", username))
+                                .Add(Restrictions.Eq("ApplicationName", applicationName))
+                                .UniqueResult<UserMembership>();
+
+                if (usr != null)
+                {
+                    usrroles = usr.Roles;
+                    foreach (RoleMembership r in usrroles)
+                    {
+                        sb.Append(r.RoleName + ",");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                if (writeToEventlog)
+                    WriteToEventLog(e, "GetRolesForUser");
+                else
+                    throw e;
+            }
+
+            if (sb.Length > 0)
+            {
+                // Remove trailing comma.
+                sb.Remove(sb.Length - 1, 1);
+                return sb.ToString().Split(',');
+            }
+
+            return new string[0];
         }
 
         public override string[] GetUsersInRole(string roleName)

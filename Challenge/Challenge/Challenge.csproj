@@ -162,6 +162,7 @@
     <Compile Include="Configuration\FluentNhibernateConfiguration.cs" />
     <Compile Include="Controllers\AuthenticateController.cs" />
     <Compile Include="Controllers\EntryController.cs" />
+    <Compile Include="Controllers\RoleController.cs" />
     <Compile Include="Controllers\UserController.cs" />
     <Compile Include="fonts\Controllers\HomeController.cs" />
     <Compile Include="fonts\Controllers\ValuesController.cs" />

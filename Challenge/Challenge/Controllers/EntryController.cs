@@ -47,8 +47,8 @@ namespace Challenge.Controllers
             } 
         }
         */
-        
-        [Authorize]
+
+        [Authorize(Roles = "Admin")]
         public IEnumerable<EntryDTO> Get()
         {
             var _session = WebApiApplication.SessionFactory.GetCurrentSession();
