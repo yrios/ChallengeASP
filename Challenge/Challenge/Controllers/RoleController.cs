@@ -17,7 +17,7 @@ namespace Challenge.Controllers
         // GET api/role
         public IEnumerable<string> Get()
         {
-            return new string[] { "value1", "value2" };
+            return _roleProvider.GetAllRoles();
         }
 
         // GET api/role/5
@@ -40,7 +40,7 @@ namespace Challenge.Controllers
             }
             catch (Exception)
             {
-                var response = new Response((int)HttpStatusCode.InternalServerError, "fail", "´Role not created");
+                var response = new Response((int)HttpStatusCode.InternalServerError, "fail", "Role not created");
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, response);
             }
         }
@@ -51,8 +51,27 @@ namespace Challenge.Controllers
         }
 
         // DELETE api/role/5
-        public void Delete(int id)
+        public HttpResponseMessage Delete([FromUri] String rolename, bool populaterole)
         {
+            try
+            {
+                if (_roleProvider.DeleteRole(rolename, populaterole))
+                {
+                    var response = new Response((int)HttpStatusCode.OK, "success", "Role Deleted");
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
+                }
+                else
+                {
+                    var response = new Response((int)HttpStatusCode.OK, "success", "Role Not Deleted");
+                    return Request.CreateResponse(HttpStatusCode.OK, response);
+                }
+
+            }
+            catch (Exception e)
+            {
+                var response = new Response((int)HttpStatusCode.InternalServerError, "fail", e.Message);
+                return Request.CreateResponse(HttpStatusCode.InternalServerError, response);
+            }
         }
     }
 }

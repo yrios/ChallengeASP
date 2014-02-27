@@ -33,6 +33,7 @@ namespace Challenge.Mapping
             Map(x => x.FailedPasswordAttemptWindowStart);
             Map(x => x.FailedPasswordAnswerAttemptWindowStart);
             HasManyToMany(x => x.Roles).Cascade.All().Table("asp_membershipusersinroles")
+                .AsBag()
                 .ParentKeyColumn("Users_Id")
                 .ChildKeyColumn("Roles_Id");
             HasMany( x => x.Users);

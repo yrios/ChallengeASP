@@ -40,7 +40,7 @@ namespace Challenge.Controllers
                 return Request.CreateResponse(HttpStatusCode.OK, response);
 
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 var response = new Response((int)HttpStatusCode.InternalServerError, "fail", "User not created");
                 return Request.CreateResponse(HttpStatusCode.InternalServerError, response);

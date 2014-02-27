@@ -1,7 +1,9 @@
 ﻿using Challenge.Models;
 using NHibernate;
+using NHibernate.Collection;
 using NHibernate.Criterion;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Configuration.Provider;
@@ -31,6 +33,8 @@ namespace Challenge.Security
             base.Initialize(name, config);
         }
 
+        //Init Helper Methods
+
         private void WriteToEventLog(Exception e, string action)
         {
             string message = "An exception occurred communicating with the data source.\n\n";
@@ -40,6 +44,33 @@ namespace Challenge.Security
             Debug.WriteLine(message);
         }
 
+        private RoleMembership GetRole(string rolename)
+        {
+            RoleMembership role = null;
+
+            try
+            {
+                role = _sessionFactory.GetCurrentSession().CreateCriteria(typeof(RoleMembership))
+                    .Add(Restrictions.Eq("RoleName", rolename))
+                    .Add(Restrictions.Eq("ApplicationName", applicationName))
+                    .UniqueResult<RoleMembership>();
+
+                //just to lazy init the collection, otherwise get the error 
+                //NHibernate.LazyInitializationException: failed to lazily initialize a collection, no session or session was closed
+                IList<UserMembership> us = role.UsersInRole;
+
+            }
+            catch (Exception e)
+            {
+                if (writeToEventlog)
+                    WriteToEventLog(e, "GetRole");
+                else
+                    throw e;
+            }
+            return role;
+        }
+
+        //End Helper Methods
         public override void AddUsersToRoles(string[] usernames, string[] roleNames)
         {
             UserMembership usr = null;
@@ -132,7 +163,30 @@ namespace Challenge.Security
 
         public override bool DeleteRole(string roleName, bool throwOnPopulatedRole)
         {
-            throw new NotImplementedException();
+            bool deleted = false;
+            if (!RoleExists(roleName))
+                throw new ProviderException("Role does not exist.");
+
+            if (throwOnPopulatedRole && GetUsersInRole(roleName).Length > 0)
+                throw new ProviderException("Cannot delete a populated role.");
+
+            try
+            {
+                RoleMembership role = GetRole(roleName);
+                _sessionFactory.GetCurrentSession().Delete(role);
+                deleted = true;
+            }
+            catch (OdbcException e)
+            {
+                if (writeToEventlog)
+                {
+                    WriteToEventLog(e, "DeleteRole");
+                    return deleted;
+                }
+                else
+                    throw e;
+            }
+            return deleted;
         }
 
         public override string[] FindUsersInRole(string roleName, string usernameToMatch)
@@ -142,7 +196,28 @@ namespace Challenge.Security
 
         public override string[] GetAllRoles()
         {
-            throw new NotImplementedException();
+            string[] roles = null;
+
+            try
+            {
+
+                IList<RoleMembership> allroles = _sessionFactory.GetCurrentSession().QueryOver<RoleMembership>().List();
+                roles = new string[allroles.Count];
+
+                foreach (RoleMembership role in allroles)
+                {
+                    roles[allroles.IndexOf(role)] = role.RoleName;
+                }
+            }
+            catch (Exception e)
+            {
+                if (writeToEventlog)
+                    WriteToEventLog(e, "GetAllRoles");
+                else
+                    throw e;
+            }
+
+            return roles;
         }
 
         public override string[] GetRolesForUser(string username)
@@ -187,7 +262,38 @@ namespace Challenge.Security
 
         public override string[] GetUsersInRole(string roleName)
         {
-            throw new NotImplementedException();
+
+            string[] usersInrole  = null;
+
+            try
+            {
+                
+                var result = _sessionFactory.GetCurrentSession().QueryOver<UserMembership>()
+                    .Right.JoinQueryOver<RoleMembership>(x => x.Roles)
+                    .Where(c => c.RoleName == roleName).List();
+
+                IList<UserMembership> users = result;
+                usersInrole = new string[users.Count];
+
+                foreach (UserMembership u in users)
+                {
+                    usersInrole[users.IndexOf(u)] = u.Username;
+                }
+            }
+            catch (Exception e)
+            {
+                if (writeToEventlog)
+                    WriteToEventLog(e, "GetUsersInRole");
+                else
+                    throw e;
+            }
+
+            if (usersInrole.Length > 0)
+            {
+                return usersInrole;
+            }
+
+            return new string[0];
         }
 
         public override bool IsUserInRole(string username, string roleName)
@@ -235,7 +341,6 @@ namespace Challenge.Security
         {
             bool exists = false;
 
-            StringBuilder sb = new StringBuilder();
             try
             {
                 RoleMembership role = _sessionFactory.GetCurrentSession().CreateCriteria(typeof(RoleMembership))

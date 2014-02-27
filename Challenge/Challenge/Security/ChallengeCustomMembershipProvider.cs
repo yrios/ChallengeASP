@@ -418,30 +418,20 @@ namespace Challenge.Security
         public Models.User GetUserByUsername(string username)
         {
             Models.User usr = null;
-            //using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                //using (var session = sessionFactory.OpenSession()){
-                    //using (ITransaction transaction = session.BeginTransaction()){
-                        try
-                        {
-                            /* Implementacion Directa con la tabla custom membership
-                            usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>()
-                                            .Add(Restrictions.Eq("Username", username))
-                                            .Add(Restrictions.Eq("ApplicationName", this.ApplicationName))
-                                            .UniqueResult<Models.User>();
-                             * */
-                            usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>()
-                                            .Add(Restrictions.Eq("username", username))
-                                            .UniqueResult<Models.User>();
-                        }
-                        catch (Exception e)
-                        {
-                            if (WriteExceptionsToEventLog)
-                                WriteToEventLog(e, "UnlockUser");
-                            throw new ProviderException(exceptionMessage);
-                        }
-                    //}
-                //}
-            //}
+
+            try
+            {
+                usr = WebApiApplication.SessionFactory.GetCurrentSession().CreateCriteria<Models.User>()
+                                .Add(Restrictions.Eq("username", username))
+                                .UniqueResult<Models.User>();
+            }
+            catch (Exception e)
+            {
+                if (WriteExceptionsToEventLog)
+                    WriteToEventLog(e, "UnlockUser");
+                throw new ProviderException(exceptionMessage);
+            }
+
             return usr;
 
         }
@@ -815,40 +805,32 @@ namespace Challenge.Security
             if (user.userMembership.IsLockedOut)
                 return isValid;
             
-            //using(var sessionFactory = FluentNhibernateConfiguration.CreateSessionFactory()){
-                //using(var _session = sessionFactory.OpenSession()){
-                    //using(ITransaction transaction = _session.BeginTransaction()){
-                        try
-                        {
-                            if (CheckPassword(password, user.password))
-                            {
-                                if (user.userMembership.IsApproved)
-                                {
-                                    isValid = true;
-                                    user.userMembership.LastLoginDate = DateTime.Now;
-                                    WebApiApplication.SessionFactory.GetCurrentSession().Update(user.userMembership);
-                                    //transaction.Commit();
-                                }
-                            }
-                            //else
-                                //UpdateFailureCount(username, "password");
+            try
+            {
+                if (CheckPassword(password, user.password))
+                {
+                    if (user.userMembership.IsApproved)
+                    {
+                        isValid = true;
+                        user.userMembership.LastLoginDate = DateTime.Now;
+                        WebApiApplication.SessionFactory.GetCurrentSession().Update(user.userMembership);
+                    }
+                }
+                //else
+                    //UpdateFailureCount(username, "password");
 
 
-                        }
-                        catch (Exception e)
-                        {
-                            if (WriteExceptionsToEventLog)
-                            {
-                                WriteToEventLog(e, "ValidateUser");
-                                throw new ProviderException(exceptionMessage);
-                            }
-                            throw e;
-                        }
+            }
+            catch (Exception e)
+            {
+                if (WriteExceptionsToEventLog)
+                {
+                    WriteToEventLog(e, "ValidateUser");
+                    throw new ProviderException(exceptionMessage);
+                }
+                throw e;
+            }
 
-                    //}
-
-                //}
-            //}
             return isValid;
         }
 
